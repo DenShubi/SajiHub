@@ -1,0 +1,7 @@
+{
+    "name": "Member User",
+    "email": "member@sajihub.com",
+    "password": "password123",
+    "password_confirmation": "password123",
+    "role": "Member"
+}
