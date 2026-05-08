@@ -17,17 +17,11 @@ class Order extends Model
         'notes',
     ];
 
-    /**
-     * The user (member) who placed the order.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * The items in this order.
-     */
     public function items()
     {
         return $this->hasMany(OrderItem::class);

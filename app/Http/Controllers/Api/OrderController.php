@@ -14,16 +14,6 @@ class OrderController extends Controller
 {
     use ImageUploadTrait;
 
-    // -------------------------------------------------------------------------
-    // SHARED: Accessible by Admin and Member (authenticated)
-    // -------------------------------------------------------------------------
-
-    /**
-     * GET /api/orders
-     *
-     * Admin  → sees ALL orders.
-     * Member → sees only their own orders.
-     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -42,12 +32,6 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    /**
-     * GET /api/orders/{id}
-     *
-     * Admin  → can view any order.
-     * Member → can only view their own order.
-     */
     public function show(Request $request, $id)
     {
         $user  = $request->user();
@@ -64,25 +48,7 @@ class OrderController extends Controller
         return response()->json($order);
     }
 
-    // -------------------------------------------------------------------------
-    // MEMBER: Create a new order (pre-order)
-    // -------------------------------------------------------------------------
 
-    /**
-     * POST /api/orders
-     *
-     * Member places a new pre-order.
-     *
-     * Request body:
-     * {
-     *   "notes": "Extra spicy please",          // optional
-     *   "payment_proof": <file>,                 // optional image upload
-     *   "items": [
-     *     { "menu_id": 1, "quantity": 2 },
-     *     { "menu_id": 3, "quantity": 1 }
-     *   ]
-     * }
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -93,13 +59,11 @@ class OrderController extends Controller
             'items.*.quantity'       => 'required|integer|min:1',
         ]);
 
-        // Upload payment proof if provided
         $paymentProofUrl = null;
         if ($request->hasFile('payment_proof')) {
             $paymentProofUrl = $this->uploadImage($request, 'payment_proof', 'payment_proofs');
         }
 
-        // Wrap in a transaction so order + items are atomic
         $order = DB::transaction(function () use ($request, $paymentProofUrl) {
             $order = Order::create([
                 'user_id'           => $request->user()->id,
@@ -117,7 +81,7 @@ class OrderController extends Controller
                 $order->items()->create([
                     'menu_id'  => $menu->id,
                     'quantity' => $item['quantity'],
-                    'price'    => $menu->price,   // snapshot price
+                    'price'    => $menu->price, 
                 ]);
 
                 $totalPrice += $menu->price * $item['quantity'];
@@ -133,13 +97,6 @@ class OrderController extends Controller
             'order'   => $order->load('items.menu:id,name,price'),
         ], 201);
     }
-
-    /**
-     * POST /api/orders/{id}/upload-proof
-     *
-     * Member uploads or replaces the payment proof for their order.
-     * Only allowed when order status is still Pending or Confirmed.
-     */
     public function uploadProof(Request $request, $id)
     {
         $request->validate([
@@ -178,12 +135,6 @@ class OrderController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/orders/{id}
-     *
-     * Member cancels their own order.
-     * Only allowed when status is Pending.
-     */
     public function destroy(Request $request, $id)
     {
         $order = Order::find($id);
@@ -202,7 +153,6 @@ class OrderController extends Controller
             ], 422);
         }
 
-        // Clean up payment proof file if any
         if ($order->payment_proof_url) {
             $oldPath = str_replace('/storage/', '', $order->payment_proof_url);
             Storage::disk('public')->delete($oldPath);
@@ -213,20 +163,6 @@ class OrderController extends Controller
         return response()->json(['message' => 'Order cancelled successfully']);
     }
 
-    // -------------------------------------------------------------------------
-    // ADMIN: Update order status
-    // -------------------------------------------------------------------------
-
-    /**
-     * PATCH /api/orders/{id}/status
-     *
-     * Admin updates the status of an order.
-     * Flow: Pending → Confirmed → Cooking → Ready → Completed
-     *       Any status (except Completed) → Cancelled
-     *
-     * Request body:
-     * { "status": "Cooking" }
-     */
     public function updateStatus(Request $request, $id)
     {
         $allowedStatuses = ['Confirmed', 'Cooking', 'Ready', 'Completed', 'Cancelled'];

@@ -16,17 +16,11 @@ class OrderItem extends Model
         'price',
     ];
 
-    /**
-     * The order this item belongs to.
-     */
     public function order()
     {
         return $this->belongsTo(Order::class);
     }
 
-    /**
-     * The menu item being ordered.
-     */
     public function menu()
     {
         return $this->belongsTo(Menu::class);
