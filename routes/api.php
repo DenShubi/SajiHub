@@ -11,6 +11,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/menus', [MenuController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/menus/{id}', [MenuController::class, 'show']);
 
     Route::middleware('admin')->group(function () {
         Route::post('/menus', [MenuController::class, 'store']);

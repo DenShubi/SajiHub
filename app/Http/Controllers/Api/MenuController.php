@@ -18,6 +18,17 @@ class MenuController extends Controller
         return response()->json($menus);
     }
 
+    public function show($id)
+    {
+        $menu = Menu::find($id);
+        
+        if (!$menu) {
+            return response()->json(['message' => 'Menu not found'], 404);
+        }
+
+        return response()->json(['menu' => $menu]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
