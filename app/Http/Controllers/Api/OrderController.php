@@ -14,6 +14,15 @@ class OrderController extends Controller
 {
     use ImageUploadTrait;
 
+    private $transitions = [
+        'Pending'   => ['Confirmed', 'Cancelled'],
+        'Confirmed' => ['Cooking', 'Cancelled'],
+        'Cooking'   => ['Ready', 'Cancelled'],
+        'Ready'     => ['Completed', 'Cancelled'],
+        'Completed' => [],
+        'Cancelled' => [],
+    ];
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -165,10 +174,8 @@ class OrderController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        $allowedStatuses = ['Confirmed', 'Cooking', 'Ready', 'Completed', 'Cancelled'];
-
         $request->validate([
-            'status' => 'required|in:' . implode(',', $allowedStatuses),
+            'status' => 'required|in:Confirmed,Cooking,Ready,Completed,Cancelled',
         ]);
 
         $order = Order::find($id);
@@ -177,12 +184,12 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        if ($order->status === 'Completed') {
-            return response()->json(['message' => 'Order is already completed and cannot be changed.'], 422);
-        }
+        $allowedNext = $this->transitions[$order->status] ?? [];
 
-        if ($order->status === 'Cancelled') {
-            return response()->json(['message' => 'Order is already cancelled and cannot be changed.'], 422);
+        if (!in_array($request->status, $allowedNext)) {
+            return response()->json([
+                'message' => "Cannot change status from '{$order->status}' to '{$request->status}'.",
+            ], 422);
         }
 
         $order->status = $request->status;
